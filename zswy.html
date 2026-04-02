@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>中枢网游 | 24h自动发货商城 + 商家中心</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #01020a;
+            min-height: 100vh;
+            color: #eef5ff;
+            overflow-x: hidden;
+        }
+        .hex-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image: linear-gradient(to right, rgba(255, 193, 7, 0.06) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(255, 193, 7, 0.06) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+        .hex-grid::before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: repeating-linear-gradient(60deg, rgba(255, 200, 50, 0.03) 0px, rgba(255, 200, 50, 0.03) 2px, transparent 2px, transparent 30px),
+                              repeating-linear-gradient(120deg, rgba(255, 200, 50, 0.03) 0px, rgba(255, 200, 50, 0.03) 2px, transparent 2px, transparent 30px);
+        }
+        #star-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .blockchain-glow {
+            position: fixed;
+            bottom: 8%;
+            right: 5%;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(255, 193, 7, 0.15) 0%, rgba(0,0,0,0) 70%);
+            pointer-events: none;
+            z-index: 1;
+        }
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.92);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 193, 7, 0.3);
+            padding: 0 5%;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+        .logo-gold {
+            font-size: 1.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #F9E0A0, #FFB347, #FFD966);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            cursor: pointer;
+        }
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            align-items: center;
+        }
+        .nav-links a {
+            color: #f0f3ff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        .nav-links a:hover { color: #FFB347; }
+        .merchant-btn {
+            background: linear-gradient(95deg, #F0A500, #FF8C00);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 700;
+            color: #0e0f1a;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-left: 10px;
+        }
+        .merchant-btn:hover { transform: scale(0.96); box-shadow: 0 0 12px rgba(255,140,0,0.5); }
+        .main-wrapper {
+            position: relative;
+            z-index: 10;
+            max-width: 1400px;
+            margin: 90px auto 30px;
+            padding: 0 20px;
+        }
+        .shop-header {
+            background: rgba(15, 18, 34, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 2rem;
+            padding: 1rem 2rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+        }
+        .search-section {
+            display: flex;
+            gap: 15px;
+            flex: 2;
+        }
+        .search-box {
+            background: #0e1121;
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            padding: 5px 20px;
+            border: 1px solid #FFB347;
+            flex: 1;
+        }
+        .search-box input {
+            background: transparent;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            color: white;
+            outline: none;
+        }
+        .query-btn {
+            background: #2a2f4b;
+            border: none;
+            padding: 8px 28px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .query-btn:hover { background: #ffb347; color: #0e0f1a; }
+        .order-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        .order-input {
+            background: #1a1e2f;
+            padding: 6px 18px;
+            border-radius: 60px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .order-input input {
+            background: #0e1121;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 40px;
+            color: white;
+            width: 160px;
+            outline: none;
+        }
+        .order-input button {
+            background: #ffb347;
+            border: none;
+            padding: 5px 14px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .customer-service {
+            background: #10131f;
+            padding: 6px 18px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .category-tag {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 1rem 0;
+        }
+        .cat-item {
+            background: #1a1f32;
+            padding: 5px 16px;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .cat-item.active, .cat-item:hover { background: #ffb347; color: #111; }
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+            min-height: 400px;
+        }
+        .product-card {
+            background: #111522;
+            border-radius: 1.5rem;
+            border: 1px solid #2a2f48;
+            transition: 0.25s;
+            cursor: pointer;
+        }
+        .product-card:hover { transform: translateY(-3px); border-color: #ffb347; }
+        .product-card.selected { border: 2px solid #ffb347; background: #191e32; }
+        .card-header { padding: 1rem; border-bottom: 1px solid #262d48; }
+        .card-header h3 { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+        .price { color: #facc15; font-size: 1.3rem; font-weight: 800; }
+        .stock { display: inline-block; padding: 4px 12px; border-radius: 30px; font-size: 0.7rem; }
+        .stock.many { background: #1f5e3a80; color: #b5ffcf; }
+        .stock.normal { background: #7a5a1a80; color: #ffeaaf; }
+        .stock.low { background: #9b2c2c80; color: #ffb3b3; }
+        .card-desc { padding: 0.8rem 1rem; font-size: 0.85rem; color: #a5b3e0; }
+        .official-link { padding: 0.6rem 1rem; font-size: 0.75rem; display: flex; justify-content: space-between; background: #0a0d18; border-top: 1px solid #1e233c; }
+        .payment-bar {
+            background: #0b0e1a;
+            padding: 1rem 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+            border-radius: 2rem;
+            margin-top: 1rem;
+        }
+        .amount { font-size: 2rem; font-weight: 800; color: #facc15; }
+        .payment-methods { display: flex; gap: 20px; background: #1a1e30; padding: 8px 20px; border-radius: 40px; }
+        .confirm-btn {
+            background: linear-gradient(95deg, #f0a500, #ff6a00);
+            border: none;
+            padding: 12px 36px;
+            border-radius: 50px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .confirm-btn:hover { transform: scale(0.98); }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        .modal.active { visibility: visible; opacity: 1; }
+        .modal-content {
+            background: #0c0f1c;
+            border-radius: 2rem;
+            padding: 28px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 193, 7, 0.5);
+        }
+        .card-code { background: #0e1121; padding: 14px; border-radius: 16px; word-break: break-all; margin: 15px 0; color: #facc15; font-size: 1rem; }
+        .toast {
+            position: fixed;
+            bottom: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f2937ee;
+            padding: 10px 24px;
+            border-radius: 60px;
+            z-index: 2100;
+            border-left: 4px solid #ffb347;
+        }
+        .cyber-input {
+            width: 100%;
+            background: #05070f;
+            border: 1.5px solid #FFB347;
+            border-radius: 60px;
+            padding: 12px 18px;
+            font-size: 0.9rem;
+            color: white;
+            outline: none;
+            margin-bottom: 12px;
+        }
+        .cyber-btn {
+            background: linear-gradient(95deg, #F0A500, #FF8C00);
+            width: 100%;
+            padding: 12px;
+            border-radius: 60px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+        }
+        .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-box { background: #111522; padding: 12px; border-radius: 1rem; text-align: center; }
+        .stat-number { font-size: 1.5rem; font-weight: 800; color: #facc15; }
+        .admin-toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .admin-toolbar button { background: #2a2f4b; border: none; padding: 8px 16px; border-radius: 40px; color: white; cursor: pointer; }
+        .orders-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .orders-table th, .orders-table td { padding: 8px 6px; text-align: left; border-bottom: 1px solid #2a2f48; }
+        .code-row { display: flex; gap: 10px; }
+        .code-row button { background: #2a2f4b; border: 1px solid #FFB347; border-radius: 60px; padding: 0 16px; cursor: pointer; color: white; }
+        .chat-widget {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 200;
+            background: #12162b;
+            backdrop-filter: blur(12px);
+            border-radius: 60px;
+            padding: 8px 18px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            cursor: pointer;
+        }
+        @media (max-width:700px) {
+            .shop-header { flex-direction: column; }
+            .stats-row { grid-template-columns: repeat(2,1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="hex-grid"></div>
+<canvas id="star-canvas"></canvas>
+<div class="blockchain-glow"></div>
+
+<div class="navbar">
+    <div class="logo-gold" onclick="scrollToTop()"><i class="fas fa-crown"></i> 中枢网游</div>
+    <div class="nav-links">
+        <a href="#">官网首页</a>
+        <a href="#">最新公告</a>
+        <a href="#">常见问题</a>
+        <a href="#">关于我们</a>
+        <a href="#">订单查询</a>
+        <a href="#">隐私政策</a>
+        <button class="merchant-btn" id="merchantCenterBtn"><i class="fas fa-store"></i> 商家中心</button>
+    </div>
+</div>
+
+<div class="main-wrapper">
+    <div class="shop-header">
+        <div class="search-section">
+            <div class="search-box"><i class="fas fa-search"></i><input type="text" id="keywordInput" placeholder="输入关键词搜索商品"></div>
+            <button class="query-btn" id="searchGoodsBtn">商品查询</button>
+        </div>
+        <div class="order-section">
+            <div class="order-input">
+                <i class="fas fa-clipboard-list"></i>
+                <input type="text" id="orderSearchInput" placeholder="订单号/手机号/邮箱">
+                <button id="queryOrderBtn">查卡密</button>
+            </div>
+            <div class="customer-service"><i class="fab fa-qq"></i> QQ:3105413627</div>
+        </div>
+    </div>
+
+    <div class="category-tag" id="categoryList">
+        <div class="cat-item active" data-cat="all">全部商品</div>
+        <div class="cat-item" data-cat="解码">🔓 解码专区</div>
+        <div class="cat-item" data-cat="磐石">🛡️ 磐石/玄武</div>
+        <div class="cat-item" data-cat="好游">🎮 好游系列</div>
+        <div class="cat-item" data-cat="备用">⚡ 备用/特惠</div>
+    </div>
+
+    <div class="products-grid" id="productsContainer"><div style="grid-column:1/-1; text-align:center; padding:3rem;"><i class="fas fa-spinner fa-pulse"></i> 加载商品中...</div></div>
+
+    <div class="payment-bar">
+        <div><span>选择商品：</span><strong id="selectedName" style="color:#ffdd99;">未选择</strong><span style="margin-left:20px;">支付金额：</span><span class="amount" id="payAmount">￥0.00</span></div>
+        <div class="payment-methods"><label><input type="radio" name="payMethod" value="wechat" checked> <i class="fab fa-weixin"></i> 微信支付</label><label><input type="radio" name="payMethod" value="alipay"> <i class="fab fa-alipay"></i> 支付宝支付</label></div>
+        <button class="confirm-btn" id="confirmPayBtn"><i class="fas fa-bolt"></i> 确认支付</button>
+    </div>
+</div>
+
+<!-- 支付弹窗（手机号/邮箱查询订单） -->
+<div id="payModal" class="modal">
+    <div class="modal-content">
+        <i class="fas fa-shopping-cart" style="font-size:48px; color:#ffb347;"></i>
+        <h3 style="margin:10px 0">填写联系方式</h3>
+        <p style="font-size:0.8rem; margin-bottom:15px; color:#aaa;">支付成功后可通过此信息查询订单</p>
+        <input type="text" id="payContact" placeholder="手机号 或 邮箱" class="cyber-input">
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <select id="payType" class="cyber-input" style="flex:1;">
+                <option value="wechat">微信支付</option>
+                <option value="alipay">支付宝支付</option>
+            </select>
+        </div>
+        <button id="submitPayBtn" class="cyber-btn" style="margin-top:15px;">确认支付</button>
+        <button id="closePayModal" style="margin-top:10px; background:#2a2f4b; width:100%; padding:10px; border-radius:60px; border:none; color:white; cursor:pointer;">取消</button>
+    </div>
+</div>
+
+<!-- 卡密展示弹窗 -->
+<div id="cardModal" class="modal">
+    <div class="modal-content">
+        <i class="fas fa-check-circle" style="color:#2ecc71; font-size:52px;"></i>
+        <h3 style="margin:10px 0">支付成功！自动发货</h3>
+        <div class="card-code" id="modalCardCode"></div>
+        <p>订单号: <span id="modalOrderNo"></span></p>
+        <p style="font-size:0.75rem; color:#aaa; margin-top:10px;">查询凭证: <span id="modalContact"></span></p>
+        <button id="closeModalBtn" class="cyber-btn" style="margin-top:10px;">关闭</button>
+    </div>
+</div>
+
+<!-- 商家中心弹窗 -->
+<div id="merchantModal" class="modal"><div class="modal-content" id="merchantModalContent"></div></div>
+<div id="toastMsg" class="toast" style="display:none;"></div>
+<div class="chat-widget" id="chatWidget"><i class="fas fa-headset"></i> <span>在线客服</span> <button id="chatBtn" style="background:#1e88e5; border:none; border-radius:40px; padding:4px 12px;">交谈</button></div>
+
+<script>
+    const API_ROOT = '/api';
+
+    let currentSelectedProduct = null, currentFilter = "all", currentKeyword = "";
+    let productsCache = [];
+    let pendingPayProduct = null;
+
+    function showToast(msg, isErr = false) {
+        let t = document.getElementById('toastMsg');
+        t.textContent = msg;
+        t.style.display = 'block';
+        t.style.backgroundColor = isErr ? '#9b2c2cee' : '#1f2937ee';
+        setTimeout(() => t.style.display = 'none', 2500);
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
+    }
+
+    async function fetchJson(url, options = {}) {
+        const resp = await fetch(url, options);
+        if (!resp.ok) {
+            let txt = '';
+            try { txt = await resp.text(); } catch (e) {}
+            throw new Error(txt || `请求失败：HTTP ${resp.status}`);
+        }
+        return resp.json();
+    }
+
+    async function loadProducts() {
+        const params = new URLSearchParams();
+        params.set('category', currentFilter);
+        if (currentKeyword.trim()) params.set('keyword', currentKeyword.trim());
+
+        const container = document.getElementById('productsContainer');
+        container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem;"><i class="fas fa-spinner fa-pulse"></i> 加载商品中...</div>';
+        try {
+            const data = await fetchJson(`${API_ROOT}/products?${params.toString()}`);
+            productsCache = Array.isArray(data) ? data : [];
+            renderProducts();
+        } catch (err) {
+            showToast('商品加载失败：' + err.message, true);
+            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem;">暂无商品</div>';
+        }
+    }
+
+    function renderProducts() {
+        const container = document.getElementById('productsContainer');
+        const filtered = productsCache || [];
+
+        if (!filtered.length) {
+            container.innerHTML = '<div style="grid-column:1/-1; text-align:center; padding:3rem;">暂无商品</div>';
+            return;
+        }
+
+        container.innerHTML = filtered.map(p => {
+            const stock = Number(p.stockCount || 0);
+            const stockClass = stock > 20 ? 'many' : (stock > 5 ? 'normal' : 'low');
+            const stockText = stock > 20 ? '库存很多' : (stock > 5 ? '库存一般' : '库存少量');
+            const isSelected = currentSelectedProduct?.id === p.id;
+            return `<div class="product-card ${isSelected ? 'selected' : ''}" data-id="${p.id}"><div class="card-header"><h3>${escapeHtml(p.name)} <span class="price">￥${p.price}</span></h3><div class="stock ${stockClass}">${stockText} (${stock})</div></div><div class="card-desc">${escapeHtml(p.desc)}</div><div class="official-link"><span>官方链接</span><a href="${p.officialLink}" target="_blank">${(p.officialLink || '').replace('https://', '')}</a></div><div style="padding:0.8rem 1rem; text-align:right; color:#ffb347;"><i class="fas fa-cart-plus"></i> 点击选择</div></div>`;
+        }).join('');
+
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.onclick = () => {
+                let id = parseInt(card.dataset.id);
+                let product = (productsCache || []).find(p => p.id === id);
+                let stock = Number(product?.stockCount || 0);
+                if (product && stock > 0) {
+                    currentSelectedProduct = product;
+                    document.getElementById('selectedName').innerText = product.name;
+                    document.getElementById('payAmount').innerHTML = `￥${product.price}`;
+                    renderProducts();
+                    showToast(`已选中：${product.name}`);
+                } else {
+                    showToast('库存不足', true);
+                }
+            };
+        });
+    }
+    
+    // 点击确认支付 -> 弹出联系方式填写框
+    document.getElementById('confirmPayBtn').onclick = () => {
+        if (!currentSelectedProduct) { showToast('请先选择商品', true); return; }
+        let stock = Number(currentSelectedProduct.stockCount || 0);
+        if (stock === 0) { showToast('库存不足', true); return; }
+        pendingPayProduct = currentSelectedProduct;
+        document.getElementById('payContact').value = '';
+        document.getElementById('payModal').classList.add('active');
+    };
+
+    // 提交支付（后端自动发货）
+    document.getElementById('submitPayBtn').onclick = async () => {
+        const contact = document.getElementById('payContact').value.trim();
+        if (!contact) { showToast('请填写手机号或邮箱', true); return; }
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact);
+        const isPhone = /^1[3-9]\d{9}$/.test(contact);
+        if (!isEmail && !isPhone) { showToast('请填写正确的手机号或邮箱', true); return; }
+
+        const product = pendingPayProduct;
+        const payType = document.getElementById('payType').value;
+        document.getElementById('payModal').classList.remove('active');
+        if (!product) { showToast('请先选择商品', true); return; }
+
+        try {
+            const data = await fetchJson(`${API_ROOT}/orders/pay`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ productId: product.id, contact, payType })
+            });
+
+            document.getElementById('modalCardCode').innerText = data.card_code || '';
+            document.getElementById('modalOrderNo').innerText = data.order_no || '';
+            document.getElementById('modalContact').innerText = contact;
+            document.getElementById('cardModal').classList.add('active');
+
+            showToast(`支付成功！卡密已发放，查询凭证: ${contact}`);
+            currentSelectedProduct = null;
+            pendingPayProduct = null;
+            document.getElementById('selectedName').innerText = '未选择';
+            document.getElementById('payAmount').innerHTML = '￥0.00';
+            await loadProducts();
+        } catch (err) {
+            showToast('发货失败：' + err.message, true);
+        }
+    };
+    
+    document.getElementById('closePayModal').onclick = () => document.getElementById('payModal').classList.remove('active');
+    
+    // 查询订单（支持订单号、手机号、邮箱）
+    async function queryOrder() {
+        const input = document.getElementById('orderSearchInput').value.trim();
+        if (!input) { showToast('请输入订单号、手机号或邮箱', true); return; }
+        try {
+            const data = await fetchJson(`${API_ROOT}/orders/query?input=${encodeURIComponent(input)}`);
+            document.getElementById('modalCardCode').innerText = data.card_code || '';
+            document.getElementById('modalOrderNo').innerText = data.order_no || '';
+            document.getElementById('modalContact').innerText = data.contact || '未记录';
+            document.getElementById('cardModal').classList.add('active');
+        } catch (err) {
+            showToast('未找到订单', true);
+        }
+    }
+
+    // ==================== 商家中心（完整后台） ====================
+    let currentAdmin = null;
+
+    async function renderMerchantDashboard() {
+        const modalContent = document.getElementById('merchantModalContent');
+        try {
+            const data = await fetchJson(`${API_ROOT}/merchants/dashboard`, { credentials: 'include' });
+
+            const totalOrders = data.totalOrders || 0;
+            const totalRevenue = Number(data.totalRevenue || 0);
+            const totalCards = Number(data.totalCards || 0);
+            const availableBalance = Number(data.availableBalance || 0);
+            const orders = Array.isArray(data.orders) ? data.orders : [];
+            const withdraws = Array.isArray(data.withdraws) ? data.withdraws : [];
+
+            modalContent.innerHTML = `
+                <h3 style="text-align:center; margin-bottom:15px;"><i class="fas fa-chart-line"></i> 中枢商家中心 <span style="font-size:14px;">(${escapeHtml(currentAdmin)})</span></h3>
+                <div class="stats-row">
+                    <div class="stat-box"><div class="stat-number">${totalOrders}</div><div>总订单</div></div>
+                    <div class="stat-box"><div class="stat-number">￥${totalRevenue.toFixed(2)}</div><div>营业额</div></div>
+                    <div class="stat-box"><div class="stat-number">${totalCards}</div><div>库存卡密</div></div>
+                    <div class="stat-box"><div class="stat-number">￥${availableBalance.toFixed(2)}</div><div>可提现</div></div>
+                </div>
+                <div class="admin-toolbar">
+                    <button id="merAddCardBtn"><i class="fas fa-key"></i> 添加卡密</button>
+                    <button id="merRefreshBtn"><i class="fas fa-sync"></i> 刷新</button>
+                    <button id="merExportBtn"><i class="fas fa-download"></i> 导出订单</button>
+                    <button id="merWithdrawBtn"><i class="fas fa-money-bill-wave"></i> 申请提现</button>
+                    <button id="merLogoutBtn"><i class="fas fa-sign-out-alt"></i> 退出登录</button>
+                </div>
+                <div style="overflow-x:auto; max-height:300px;">
+                    <table class="orders-table"><thead><tr><th>订单号</th><th>联系方式</th><th>商品</th><th>金额</th><th>支付方式</th><th>时间</th><th>卡密</th></tr></thead>
+                    <tbody>${orders.map(o => `<tr><td style="font-family:monospace;">${o.order_no}</td><td>${o.contact || '未填'}</td><td>${escapeHtml(o.product_name)}</td><td>￥${o.amount}</td><td>${o.pay_type === 'wechat' ? '微信' : '支付宝'}</td><td>${new Date(o.pay_time).toLocaleString()}</td><td style="max-width:150px; word-break:break-all;">${o.card_code || '无'}</td></tr>`).join('')}</tbody>
+                    </table>
+                </div>
+                <div style="margin-top:20px;"><h4 style="margin-bottom:10px;">📋 提现记录</h4><div id="merWithdrawHistory"></div></div>
+            `;
+
+            const historyDiv = document.getElementById('merWithdrawHistory');
+            if (withdraws.length === 0) {
+                historyDiv.innerHTML = '<div style="text-align:center; padding:10px; color:#aaa;">暂无记录</div>';
+            } else {
+                historyDiv.innerHTML = `<table class="orders-table"><thead><tr><th>时间</th><th>金额</th><th>方式</th><th>账户</th><th>状态</th><tr></thead><tbody>${withdraws.map(w => `<tr><td style="font-size:0.7rem;">${new Date(w.applyTime).toLocaleString()}</td><td style="color:#facc15;">￥${w.amount}</td><td>${w.method === 'alipay' ? '支付宝' : '微信'}</td><td>${escapeHtml(w.account)}</td><td>${w.status === 'pending' ? '<span style="color:#ffb347;">审核中</span>' : '<span style="color:#2ecc71;">已处理</span>'}</td></tr>`).join('')}</tbody></table>`;
+            }
+
+            document.getElementById('merAddCardBtn').onclick = async () => {
+                let pid = prompt('商品ID (1-7)');
+                let cardsText = prompt('卡密,逗号分隔');
+                if (!pid || !cardsText) return;
+
+                try {
+                    await fetchJson(`${API_ROOT}/merchants/cards/add`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ productId: parseInt(pid), cardsText })
+                    });
+                    showToast('添加成功');
+                    await loadProducts();
+                    await renderMerchantDashboard();
+                } catch (err) {
+                    showToast('添加失败：' + err.message, true);
+                }
+            };
+
+            document.getElementById('merRefreshBtn').onclick = () => renderMerchantDashboard();
+
+            document.getElementById('merExportBtn').onclick = async () => {
+                try {
+                    const orderRows = await fetchJson(`${API_ROOT}/merchants/orders`, { credentials: 'include' });
+                    const ws = XLSX.utils.json_to_sheet(orderRows.map(o => ({
+                        订单号: o.order_no,
+                        联系方式: o.contact,
+                        商品: o.product_name,
+                        金额: o.amount,
+                        支付方式: o.pay_type === 'wechat' ? '微信' : '支付宝',
+                        时间: new Date(o.pay_time).toLocaleString(),
+                        卡密: o.card_code
+                    })));
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, '订单');
+                    XLSX.writeFile(wb, `中枢订单_${Date.now()}.xlsx`);
+                    showToast('导出成功');
+                } catch (err) {
+                    showToast('导出失败：' + err.message, true);
+                }
+            };
+
+            document.getElementById('merWithdrawBtn').onclick = async () => {
+                const amount = parseFloat(prompt(`可提现余额：￥${availableBalance.toFixed(2)}\n输入提现金额:`));
+                if (isNaN(amount) || amount <= 0) { showToast('无效金额', true); return; }
+                if (amount > availableBalance) { showToast('金额超限', true); return; }
+
+                const method = prompt('提现方式: 1-支付宝 2-微信', '1');
+                const methodStr = method === '1' ? 'alipay' : 'wechat';
+                const account = prompt('请输入收款账号');
+                if (!account) return;
+
+                try {
+                    await fetchJson(`${API_ROOT}/merchants/withdraw`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ amount, method: methodStr, account })
+                    });
+                    showToast(`提现申请已提交，金额 ¥${amount}`);
+                    await renderMerchantDashboard();
+                } catch (err) {
+                    showToast('提现失败：' + err.message, true);
+                }
+            };
+
+            document.getElementById('merLogoutBtn').onclick = async () => {
+                try {
+                    await fetchJson(`${API_ROOT}/merchants/logout`, {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                } catch (e) {}
+                currentAdmin = null;
+                document.getElementById('merchantModal').classList.remove('active');
+                showToast('已退出商家中心');
+            };
+        } catch (err) {
+            showToast('商家中心加载失败：' + err.message, true);
+        }
+    }
+
+    function showMerchantLogin() {
+        const modalContent = document.getElementById('merchantModalContent');
+        modalContent.innerHTML = `
+            <div style="text-align:center;"><h3 style="margin-bottom:15px;"><i class="fas fa-store"></i> 中枢商家登录</h3></div>
+            <input type="tel" id="merLoginPhone" placeholder="手机号" class="cyber-input" value="18912891897">
+            <input type="password" id="merLoginPwd" placeholder="密码" class="cyber-input">
+            <button id="merDoLoginBtn" class="cyber-btn">登录</button>
+            <div style="margin-top:15px; text-align:center;"><a id="merShowRegBtn" style="color:#FFD966; cursor:pointer;">还没有账户？去注册</a></div>
+        `;
+
+        document.getElementById('merDoLoginBtn').onclick = async () => {
+            const phone = document.getElementById('merLoginPhone').value.trim();
+            const pwd = document.getElementById('merLoginPwd').value.trim();
+            try {
+                await fetchJson(`${API_ROOT}/merchants/login`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password: pwd })
+                });
+                currentAdmin = phone;
+                await renderMerchantDashboard();
+            } catch (err) {
+                showToast('账号或密码错误', true);
+            }
+        };
+
+        document.getElementById('merShowRegBtn').onclick = () => showMerchantRegister();
+    }
+
+    function showMerchantRegister() {
+        const modalContent = document.getElementById('merchantModalContent');
+        modalContent.innerHTML = `
+            <div style="text-align:center;"><h3 style="margin-bottom:15px;"><i class="fas fa-user-plus"></i> 商家注册</h3></div>
+            <input type="tel" id="merRegPhone" placeholder="手机号" class="cyber-input">
+            <input type="password" id="merRegPwd" placeholder="密码" class="cyber-input">
+            <input type="password" id="merRegConfirm" placeholder="确认密码" class="cyber-input">
+            <button id="merDoRegBtn" class="cyber-btn">注册</button>
+            <div style="margin-top:15px; text-align:center;"><a id="merBackLogin" style="color:#FFD966; cursor:pointer;">已有账号？去登录</a></div>
+        `;
+
+        document.getElementById('merDoRegBtn').onclick = async () => {
+            const phone = document.getElementById('merRegPhone').value.trim();
+            const pwd = document.getElementById('merRegPwd').value.trim();
+            const confirm = document.getElementById('merRegConfirm').value.trim();
+            if (!phone || !pwd) { showToast('请填写完整', true); return; }
+            if (pwd !== confirm) { showToast('密码不一致', true); return; }
+            try {
+                await fetchJson(`${API_ROOT}/merchants/register`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, password: pwd })
+                });
+                showToast('注册成功，请登录');
+                showMerchantLogin();
+            } catch (err) {
+                showToast('注册失败：' + err.message, true);
+            }
+        };
+
+        document.getElementById('merBackLogin').onclick = () => showMerchantLogin();
+    }
+
+    document.getElementById('merchantCenterBtn').onclick = async () => {
+        document.getElementById('merchantModal').classList.add('active');
+        if (currentAdmin) {
+            await renderMerchantDashboard();
+        } else {
+            showMerchantLogin();
+        }
+    };
+    document.getElementById('closeModalBtn').onclick = () => document.getElementById('cardModal').classList.remove('active');
+    document.getElementById('queryOrderBtn').onclick = queryOrder;
+    document.getElementById('searchGoodsBtn').onclick = async () => { currentKeyword = document.getElementById('keywordInput').value; await loadProducts(); };
+    document.getElementById('keywordInput').addEventListener('keypress', async (e) => { if (e.key === 'Enter') { currentKeyword = e.target.value; await loadProducts(); } });
+    document.querySelectorAll('.cat-item').forEach(cat => { cat.onclick = async () => { document.querySelectorAll('.cat-item').forEach(c => c.classList.remove('active')); cat.classList.add('active'); currentFilter = cat.getAttribute('data-cat'); await loadProducts(); }; });
+    window.onclick = (e) => { if (e.target.classList && e.target.classList.contains('modal')) e.target.classList.remove('active'); };
+    document.getElementById('chatBtn').onclick = () => alert('客服QQ:3105413627\n在线时间:9:00-21:00');
+    function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+    // 星空粒子
+    const canvas = document.getElementById('star-canvas'), ctx = canvas.getContext('2d'); let stars = [];
+    function initStars() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; for (let i = 0; i < 200; i++) stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, r: Math.random() * 2 + 0.5, alpha: Math.random() * 0.6 + 0.2, speed: 0.02 + Math.random() * 0.03, phase: Math.random() * Math.PI * 2 }); }
+    function drawStars() { if (!ctx) return; ctx.clearRect(0, 0, canvas.width, canvas.height); stars.forEach(s => { s.phase += s.speed; let flicker = 0.4 + 0.5 * (Math.sin(s.phase) * 0.5 + 0.5); ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fillStyle = `rgba(255,220,150,${s.alpha * flicker * 0.8})`; ctx.fill(); }); requestAnimationFrame(drawStars); }
+    window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; initStars(); });
+    initStars(); drawStars();
+    document.getElementById('selectedName').innerText = '未选择';
+    document.getElementById('payAmount').innerHTML = '￥0.00';
+    loadProducts();
+</script>
+</body>
+</html>
